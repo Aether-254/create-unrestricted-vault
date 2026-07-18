@@ -1,21 +1,23 @@
 package awa.Aether_254.create_unrestricted_vault.client;
 
 import awa.Aether_254.create_unrestricted_vault.UnrestrictedVaultConfig;
-import com.terraformersmc.modmenu.api.ConfigScreenFactory;
-import com.terraformersmc.modmenu.api.ModMenuApi;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
 import me.shedaniel.clothconfig2.api.ConfigCategory;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraftforge.client.ConfigScreenHandler;
+import net.minecraftforge.fml.ModLoadingContext;
 
-public final class UnrestrictedVaultModMenu implements ModMenuApi {
-    @Override
-    public ConfigScreenFactory<?> getModConfigScreenFactory() {
-        return UnrestrictedVaultModMenu::createScreen;
+public final class UnrestrictedVaultModMenu {
+    public static void register() {
+        ModLoadingContext.get().registerExtensionPoint(
+            ConfigScreenHandler.ConfigScreenFactory.class,
+            () -> new ConfigScreenHandler.ConfigScreenFactory((minecraft, parent) -> createScreen(parent))
+        );
     }
 
-    private static Screen createScreen(Screen parent) {
+    public static Screen createScreen(Screen parent) {
         UnrestrictedVaultConfig.Data config = UnrestrictedVaultConfig.get();
         ConfigBuilder builder = ConfigBuilder.create()
             .setParentScreen(parent)
