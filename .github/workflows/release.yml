@@ -37,23 +37,30 @@ jobs:
       - run: chmod +x gradlew
       - run: ./gradlew build --stacktrace
       
+      - name: Sanitize branch name
+        id: sanitize
+        run: |
+          BRANCH="${{ matrix.branch }}"
+          SAFE_BRANCH="${BRANCH//\//-}"
+          echo "safe_branch=$SAFE_BRANCH" >> $GITHUB_OUTPUT
+      
       - name: Rename jar with branch name
         run: |
+          SAFE_BRANCH="${{ steps.sanitize.outputs.safe_branch }}"
+          mkdir -p output
           for jar in build/libs/*.jar; do
+            # 跳过 sources 和 javadoc
             if [[ "$jar" != *"sources"* ]] && [[ "$jar" != *"javadoc"* ]]; then
-              BRANCH="${{ matrix.branch }}"
-              SAFE_BRANCH="${BRANCH//\//-}"
-              DIR=$(dirname "$jar")
               BASENAME=$(basename "$jar" .jar)
-              mv "$jar" "$DIR/${BASENAME}-${SAFE_BRANCH}.jar"
+              cp "$jar" "output/${BASENAME}-${SAFE_BRANCH}.jar"
             fi
           done
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: jars-${{ matrix.branch }}
-          path: build/libs/*.jar
+          name: jars-${{ steps.sanitize.outputs.safe_branch }}
+          path: output/*.jar
 
   release:
     needs: build
@@ -64,13 +71,14 @@ jobs:
         with:
           path: all-jars
       
-      - name: List files
+      - name: Move all jars to release directory
         run: |
-          find all-jars -name "*.jar" -exec ls -la {} \;
           mkdir -p release-jars
           find all-jars -name "*.jar" -exec cp {} release-jars/ \;
+          ls -la release-jars/
       
-      - uses: softprops/action-gh-release@v2
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.version }}
           name: ${{ github.event.inputs.version }}
