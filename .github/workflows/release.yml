@@ -7,16 +7,6 @@ on:
         description: 'Version (e.g., v1.0.0)'
         required: true
         type: string
-      branch:
-        description: 'Branch to build from'
-        required: true
-        type: choice
-        options:
-          - fabric/1.20.1
-          - quilt/1.20.1
-          - forge/1.20.1
-          - neoforge/1.20.1
-          - neoforge/1.21.1
 
 permissions:
   contents: write
@@ -24,10 +14,19 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        branch:
+          - fabric/1.20.1
+          - quilt/1.20.1
+          - forge/1.20.1
+          - neoforge/1.20.1
+          - neoforge/1.21.1
+      fail-fast: false
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch }}
+          ref: ${{ matrix.branch }}
       
       - uses: actions/setup-java@v4
         with:
@@ -38,9 +37,16 @@ jobs:
       - run: chmod +x gradlew
       - run: ./gradlew build --stacktrace
       
+      - name: Sanitize branch name for tag
+        id: sanitize
+        run: |
+          BRANCH="${{ matrix.branch }}"
+          SAFE_BRANCH="${BRANCH//\//-}"
+          echo "safe_branch=$SAFE_BRANCH" >> $GITHUB_OUTPUT
+      
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.version }}-${{ github.event.inputs.branch }}
-          name: ${{ github.event.inputs.version }} (${{ github.event.inputs.branch }})
+          tag_name: ${{ inputs.version }}-${{ steps.sanitize.outputs.safe_branch }}
+          name: ${{ inputs.version }} (${{ matrix.branch }})
           generate_release_notes: true
           files: build/libs/*.jar
